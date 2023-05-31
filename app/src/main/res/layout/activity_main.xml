@@ -14,7 +14,7 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toTopOf="@id/DetectButton"
-        android:text="탐지 중입니다..." />
+        android:text="탐지를 진행하시겠습니까?" />
 
     <Button
         android:id="@+id/DetectButton"
