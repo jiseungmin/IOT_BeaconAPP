@@ -2,7 +2,6 @@ package com.example.beacon_tracking
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.content.DialogInterface
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.graphics.Color
@@ -12,6 +11,7 @@ import android.os.SystemClock
 import android.util.Log
 import android.widget.Button
 import android.widget.Chronometer
+import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
@@ -27,7 +27,9 @@ import com.naver.maps.map.LocationTrackingMode
 import com.naver.maps.map.MapView
 import com.naver.maps.map.NaverMap
 import com.naver.maps.map.OnMapReadyCallback
+import com.naver.maps.map.overlay.Align
 import com.naver.maps.map.overlay.Marker
+import com.naver.maps.map.overlay.Overlay
 import com.naver.maps.map.util.FusedLocationSource
 import com.naver.maps.map.util.MarkerIcons
 import org.altbeacon.beacon.BeaconManager
@@ -36,7 +38,7 @@ import org.altbeacon.beacon.Identifier
 import org.altbeacon.beacon.MonitorNotifier
 import org.altbeacon.beacon.Region
 
-class MainActivity : AppCompatActivity(), OnMapReadyCallback {
+class MainActivity : AppCompatActivity(), OnMapReadyCallback, Overlay.OnClickListener {
     private var Ex = 0
     private lateinit var naverMap: NaverMap
     private lateinit var Beacon: BeaconManager
@@ -134,7 +136,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
             StateTextView.setText("탐지를 진행하시겠습니까?")
             Beacon.stopMonitoring(region)
             Beacon.getRegionViewModel(region).regionState.removeObservers(this)
-            Locations()
+            makertagdialog()
         }
         alertDialogBuilder.setNegativeButton("아니오") { dialog, which -> {} }
         val alertDialog = alertDialogBuilder.create()
@@ -142,7 +144,8 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
 
-    private fun Locations(){
+    @SuppressLint("MissingPermission")
+    private fun Locations(tag:String){
         fusedLocationClient.lastLocation.addOnSuccessListener { location: Location? ->
                 location?.let {
                     val latitude = location.latitude
@@ -152,10 +155,17 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
                     marker.map = naverMap // Naver 지도에 마커 추가
                     marker.icon = MarkerIcons.BLACK
                     marker.iconTintColor = Color.RED
+                    marker.tag = tag
+                    marker.captionText = tag
+                    marker.setCaptionAligns(Align.Top)
+                    marker.setOnClickListener(this);
 
                     val editor = sharedPreferences.edit()
-                    editor.putFloat("latitude", latitude.toFloat())
-                    editor.putFloat("longitude", longitude.toFloat())
+                    val markerId = marker.tag
+                    Log.d("ididid", "${markerId}")
+                    editor.putString("markerId", markerId.toString())
+                    editor.putFloat("latitude_$markerId", latitude.toFloat())
+                    editor.putFloat("longitude_$markerId", longitude.toFloat())
                     editor.apply()
                 }
             }
@@ -170,15 +180,59 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
         naverMap.locationSource = locationSource
         naverMap.locationTrackingMode = LocationTrackingMode.Follow
 
-        val latitude = sharedPreferences.getFloat("latitude", 0f).toDouble()
-        val longitude = sharedPreferences.getFloat("longitude", 0f).toDouble()
-        if (latitude != 0.0 && longitude != 0.0) {
-            val marker = Marker() // 마커 생성
-            marker.position = LatLng(latitude, longitude) // 저장된 위치로 설정
-            marker.map = naverMap // Naver 지도에 마커 추가
-            marker.icon = MarkerIcons.BLACK
-            marker.iconTintColor = Color.RED
+        Log.d("data1", "${sharedPreferences.all}")
+        for ((markerId, _) in sharedPreferences.all) {
+            if (markerId.startsWith("latitude_")) {
+                val marker = Marker()
+                val latitude = sharedPreferences.getFloat(markerId, 0f).toDouble()
+                val longitude = sharedPreferences.getFloat(markerId.replace("latitude_", "longitude_"), 0f).toDouble()
+                marker.position = LatLng(latitude, longitude)
+                marker.map = naverMap
+                marker.tag = markerId
+                marker.captionText = markerId.replace("latitude_","")
+                marker.setCaptionAligns(Align.Top)
+                marker.icon = MarkerIcons.BLACK
+                marker.iconTintColor = Color.RED
+                marker.setOnClickListener(this)
+            }
         }
+    }
+    override fun onClick(p0: Overlay): Boolean {
+        if (p0 is Marker) {
+            val alertDialogBuilder = AlertDialog.Builder(this)
+            alertDialogBuilder.setTitle("Do you want to delete the location?")
+            alertDialogBuilder.setMessage("위치를 제거하시겠습니까?")
+            alertDialogBuilder.setPositiveButton("예") { dialog, which ->
+                p0.map = null
+                val markerId = p0.tag.toString()
+                val newMarkerId = markerId.replace("latitude_", "")
+                sharedPreferences.edit()
+                    .remove(markerId)
+                    .remove("latitude_$markerId")
+                    .remove("longitude_$newMarkerId")
+                    .remove("$markerId")
+                    .apply()
+            }
+
+            alertDialogBuilder.setNegativeButton("아니오") { dialog, which -> {} }
+            val alertDialog = alertDialogBuilder.create()
+            alertDialog.show()
+        }
+        return true
+    }
+
+    private fun makertagdialog(){
+        val et = EditText(this)
+        val alertDialogBuilder = AlertDialog.Builder(this)
+        alertDialogBuilder.setTitle("찾은 물체의 이름을 적어주세요.")
+        alertDialogBuilder.setView(et);
+        alertDialogBuilder.setPositiveButton("예") { dialog, which ->
+            var tag:String = et.text.toString()
+            Locations(tag)
+        }
+        alertDialogBuilder.setNegativeButton("아니오") { dialog, which -> {} }
+        val alertDialog = alertDialogBuilder.create()
+        alertDialog.show()
     }
 
     override fun onStart() {
