@@ -128,19 +128,25 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, Overlay.OnClickLis
         alertDialogBuilder.setTitle("Stop Detecting")
         alertDialogBuilder.setMessage("원하는 물체를 발견하였습니까?")
         alertDialogBuilder.setPositiveButton("예") { dialog, which ->
-            Ex = 0
-            Timmer.stop()
-            Timmer.base = SystemClock.elapsedRealtime()
-            Timmer.isVisible = false
-            DetectButton.setText("탐색 하기")
-            StateTextView.setText("탐지를 진행하시겠습니까?")
-            Beacon.stopMonitoring(region)
-            Beacon.getRegionViewModel(region).regionState.removeObservers(this)
+            Stopbeacon()
             makertagdialog()
         }
-        alertDialogBuilder.setNegativeButton("아니오") { dialog, which -> {} }
+        alertDialogBuilder.setNegativeButton("아니오") { dialog, which ->
+            Stopbeacon()
+        }
         val alertDialog = alertDialogBuilder.create()
         alertDialog.show()
+    }
+
+    private fun Stopbeacon(){
+        Ex = 0
+        Timmer.stop()
+        Timmer.base = SystemClock.elapsedRealtime()
+        Timmer.isVisible = false
+        DetectButton.setText("탐색 하기")
+        StateTextView.setText("탐지를 진행하시겠습니까?")
+        Beacon.stopMonitoring(region)
+        Beacon.getRegionViewModel(region).regionState.removeObservers(this)
     }
 
 
