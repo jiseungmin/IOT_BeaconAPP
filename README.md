@@ -6,3 +6,5 @@
 - 앱 동작도
 
 ![image](https://github.com/jiseungmin/IOT_BeaconAPP/assets/98318326/41f4f133-8b8b-41ae-b465-8a0f73f25f4d)
+
+- 앱 화면
